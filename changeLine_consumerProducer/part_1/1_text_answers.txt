@@ -1,0 +1,82 @@
+Answers to Question 1, b-e.
+
+b.) Running the system command <ipcs> results in the following output:
+
+            joe@linux-mint:~/code/C/CIS573/assignment_06$ ipcs
+
+            ------ Message Queues --------
+            key        msqid      owner      perms      used-bytes   messages    
+
+            ------ Shared Memory Segments --------
+            key        shmid      owner      perms      bytes      nattch     status      
+            0x007001e6 0          postgres   600        56         6                       
+            0x00000000 32770      joe        600        4194304    2          dest         
+            0x00000000 32772      joe        600        524288     2          dest         
+            0x00000000 65541      joe        606        5809860    2          dest         
+            0x00000000 65542      joe        606        5809860    2          dest         
+            0x00000000 7          joe        600        524288     2          dest         
+            0x00000000 32778      joe        600        524288     2          dest         
+            0x0000007b 32779      joe        666        8          0                       
+            0x00000000 32780      joe        600        524288     2          dest         
+            0x00000000 13         joe        600        524288     2          dest         
+            0x00000000 14         joe        600        524288     2          dest         
+            0x00000000 18         joe        600        524288     2          dest         
+            0x00000000 28         joe        600        524288     2          dest         
+            0x00000000 31         joe        600        524288     2          dest         
+            0x00000000 34         joe        600        524288     2          dest         
+            0x00000000 38         joe        600        524288     2          dest         
+            0x00000000 41         joe        600        524288     2          dest         
+            0x00000000 47         joe        600        67108864   2          dest         
+            0x00000000 51         joe        600        524288     2          dest         
+            0x00000000 53         joe        600        4194304    2          dest         
+            0x00000000 57         joe        600        16777216   2          dest         
+            0x00000000 60         joe        600        67108864   2          dest         
+            0x00000000 32830      joe        606        6075168    2          dest         
+            0x00000000 32831      joe        606        6075168    2          dest         
+
+            ------ Semaphore Arrays --------
+            key        semid      owner      perms      nsems
+
+Comments on ipcs output: 
+There are no active message queues or semaphore arrays, but there are several active shared memory
+segments. Each segment has a key, shmid, owner, permissions, size (bytes), nattch, and a status.
+The key is used by other processes while the shmid is used by the operating system commands like shmget() and shmat() to perform
+operations on the memory segment. Owner is which user initiated the process. 
+For example, postgres owner initiated a shared memory segment with id 0 that is 56 bytes in size and has 6 processes attached to it.
+It is one of the few processes without a status of "dest", meaning it is not set to be destroyed.
+
+c.) printLine.c is the program that should be executed first. 
+The primary reason is that it contains the code to create the initial shared memory segment (id = shmget(key, MSIZ, IPC_CREAT | 0666)),
+specifically the third argument to shmget contains the flag IPC_CREATE | 0666, which tells the command to initialize the segment. In changeLine.c, there
+is the code (id = shmget( key, MSIZ, 0 )). A flag of 0 in the third argument indicates that shmget is requesting the id of an existing segment.
+
+The secondary reason is that changeLine would have nothing to change if printLine were not already running.
+
+d. Running printLine and observing its performance:
+
+$ ./printLine
+
+=> aaaaaaaaaa 
+(waits 4 seconds)
+=> aaaaaaaaaa 
+(printed the same line again)
+
+e. Running changeLine and then running ipcs multiple times. 
+
+./changeLine y 20
+
+printLine now outputs: yyyyyyyyyyyyyyyyyyyy
+
+I ran it several times and then I noticed the key in the following shared memory segment entry each time I ran ipcs
+
+key        shmid      owner      perms      bytes      nattch
+...
+...
+0x0000007b 32779      joe        666        8          1      
+
+I then noticed the key is 0x0000007b, which is 123 in decimal. I remember seeing that in line.h.
+This is the key that the processes are using to access the same segment. The bytes are also 8, which is the size of a struct in C. 
+When I terminate printLine and then run ipcs, nattach attribute is 0, indicating no processes are currently attached to the memory segment.
+
+
+
